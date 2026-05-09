@@ -564,3 +564,132 @@ function ResourceList({ title, items }: { title: string; items: string[] }) {
     </div>
   );
 }
+
+function VirusTotalPanel({
+  result,
+  loading,
+  onRescan,
+}: {
+  result: VTResult | null;
+  loading: boolean;
+  onRescan: () => void;
+}) {
+  if (loading) {
+    return (
+      <Card><CardContent className="py-10 flex flex-col items-center gap-3 text-muted-foreground">
+        <Loader2 className="w-6 h-6 animate-spin text-primary" />
+        <p className="text-sm">Consultando VirusTotal…</p>
+      </CardContent></Card>
+    );
+  }
+  if (!result) {
+    return (
+      <Card><CardContent className="py-6 flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">Aún no se ha consultado esta URL.</p>
+        <Button variant="outline" size="sm" onClick={onRescan}>
+          <RefreshCw className="w-4 h-4 mr-1.5" />Consultar ahora
+        </Button>
+      </CardContent></Card>
+    );
+  }
+  if (!result.ok) {
+    return (
+      <Card className="border-destructive/40 bg-destructive/5"><CardContent className="py-4 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <AlertTriangle className="w-5 h-5 text-destructive" />
+          <div>
+            <div className="font-medium">VirusTotal devolvió un error</div>
+            <div className="text-sm text-muted-foreground">{result.error}</div>
+          </div>
+        </div>
+        <Button variant="outline" size="sm" onClick={onRescan}>
+          <RefreshCw className="w-4 h-4 mr-1.5" />Reintentar
+        </Button>
+      </CardContent></Card>
+    );
+  }
+
+  const s = result.stats ?? { harmless: 0, malicious: 0, suspicious: 0, undetected: 0, timeout: 0 };
+  const total = result.totalEngines ?? 0;
+  const verdict =
+    s.malicious > 0 ? { label: "Malicioso", color: "bg-destructive/20 text-destructive border-destructive/40", icon: ShieldAlert }
+    : s.suspicious > 0 ? { label: "Sospechoso", color: "bg-warning/20 text-warning-foreground border-warning/40", icon: ShieldAlert }
+    : { label: "Limpio", color: "bg-primary/20 text-primary border-primary/40", icon: ShieldCheck };
+  const Icon = verdict.icon;
+
+  return (
+    <Card>
+      <CardContent className="py-4 space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <Badge variant="outline" className={`${verdict.color} text-sm py-1.5 px-3`}>
+              <Icon className="w-4 h-4 mr-1.5" />{verdict.label}
+            </Badge>
+            <div className="text-sm text-muted-foreground">
+              {s.malicious + s.suspicious}/{total} motores marcaron esta URL
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {result.permalink && (
+              <a href={result.permalink} target="_blank" rel="noreferrer" className="text-xs text-accent hover:underline inline-flex items-center gap-1">
+                Ver en VirusTotal <ExternalLink className="w-3 h-3" />
+              </a>
+            )}
+            <Button variant="outline" size="sm" onClick={onRescan}>
+              <RefreshCw className="w-4 h-4 mr-1.5" />Reescanear
+            </Button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+          <Stat label="Maliciosos" value={s.malicious} tone={s.malicious > 0 ? "destructive" : "muted"} />
+          <Stat label="Sospechosos" value={s.suspicious} tone={s.suspicious > 0 ? "warning" : "muted"} />
+          <Stat label="Limpios" value={s.harmless} tone="primary" />
+          <Stat label="Sin detectar" value={s.undetected} tone="muted" />
+          <Stat label="Timeout" value={s.timeout} tone="muted" />
+        </div>
+
+        {result.scannedAt && (
+          <p className="text-xs text-muted-foreground">
+            Último análisis: {new Date(result.scannedAt * 1000).toLocaleString()}{result.fresh ? " (recién escaneado)" : ""}
+          </p>
+        )}
+
+        {result.flaggedBy && result.flaggedBy.length > 0 && (
+          <div>
+            <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2">
+              Motores que han marcado la URL ({result.flaggedBy.length})
+            </div>
+            <ScrollArea className="max-h-72 rounded-md border border-border/60 bg-input/30">
+              <ul className="p-2 space-y-1 text-xs font-mono">
+                {result.flaggedBy.map((f, i) => (
+                  <li key={i} className="grid grid-cols-[160px_100px_1fr] gap-2 px-2 py-1 rounded hover:bg-card/40">
+                    <span className="text-foreground/90 truncate">{f.engine}</span>
+                    <Badge variant="outline" className={f.category === "malicious" ? "border-destructive/40 text-destructive" : "border-warning/40 text-foreground/80"}>
+                      {f.category}
+                    </Badge>
+                    <span className="text-muted-foreground truncate">{f.result}</span>
+                  </li>
+                ))}
+              </ul>
+            </ScrollArea>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function Stat({ label, value, tone }: { label: string; value: number; tone: "destructive" | "warning" | "primary" | "muted" }) {
+  const toneClass =
+    tone === "destructive" ? "text-destructive border-destructive/40 bg-destructive/10"
+    : tone === "warning" ? "text-foreground border-warning/40 bg-warning/10"
+    : tone === "primary" ? "text-primary border-primary/40 bg-primary/10"
+    : "text-muted-foreground border-border bg-input/30";
+  return (
+    <div className={`rounded-md border px-3 py-2 ${toneClass}`}>
+      <div className="text-[10px] uppercase tracking-wide opacity-80">{label}</div>
+      <div className="text-xl font-semibold mt-0.5">{value}</div>
+    </div>
+  );
+}
