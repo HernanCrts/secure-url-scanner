@@ -10,7 +10,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { analyzeUrl, type AnalyzeResult } from "@/lib/analyze.functions";
 import { checkVirusTotal, type VTResult } from "@/lib/virustotal.functions";
@@ -62,7 +61,6 @@ function Home() {
   const [result, setResult] = useState<AnalyzeResult | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [showPreview, setShowPreview] = useState(false);
-  const [hydrated, setHydrated] = useState(false);
 
   // VirusTotal
   const [vtKey, setVtKey] = useState("");
@@ -73,7 +71,6 @@ function Home() {
   const effectiveUA = useCustom ? uaCustom : uaPreset;
 
   useEffect(() => {
-    setHydrated(true);
     try {
       const raw = localStorage.getItem(HISTORY_KEY);
       if (raw) setHistory(JSON.parse(raw));
