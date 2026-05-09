@@ -75,8 +75,32 @@ function Home() {
     try {
       const raw = localStorage.getItem(HISTORY_KEY);
       if (raw) setHistory(JSON.parse(raw));
+      const k = localStorage.getItem(VT_KEY_STORAGE);
+      if (k) setVtKey(k);
     } catch { /* ignore */ }
   }, []);
+
+  function saveVtKey(k: string) {
+    setVtKey(k);
+    try {
+      if (k) localStorage.setItem(VT_KEY_STORAGE, k);
+      else localStorage.removeItem(VT_KEY_STORAGE);
+    } catch { /* ignore */ }
+  }
+
+  async function runVt(targetUrl: string, force = false) {
+    if (!vtKey) return;
+    setVtLoading(true);
+    setVtResult(null);
+    try {
+      const r = await vtCheck({ data: { url: targetUrl, apiKey: vtKey, forceRescan: force } });
+      setVtResult(r);
+    } catch (err) {
+      setVtResult({ ok: false, error: (err as Error).message });
+    } finally {
+      setVtLoading(false);
+    }
+  }
 
   function pushHistory(item: HistoryItem) {
     setHistory((prev) => {
