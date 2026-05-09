@@ -238,6 +238,58 @@ function Home() {
           </CardContent>
         </Card>
 
+        <Collapsible open={vtOpen} onOpenChange={setVtOpen}>
+          <Card className={`border-border/60 ${vtKey ? "bg-card/60" : "bg-card/40"}`}>
+            <CollapsibleTrigger asChild>
+              <button className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-card/30 transition-colors rounded-t-xl">
+                <div className="flex items-center gap-3">
+                  <KeyRound className="w-4 h-4 text-primary" />
+                  <div>
+                    <div className="text-sm font-medium">Integración con VirusTotal</div>
+                    <div className="text-xs text-muted-foreground">
+                      {vtKey ? "API key configurada — se consultará automáticamente" : "Opcional · pega tu API key para revisar reputación"}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {vtKey && (
+                    <Badge variant="outline" className="border-primary/40 text-primary">
+                      <ShieldCheck className="w-3 h-3 mr-1" />Activo
+                    </Badge>
+                  )}
+                  <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${vtOpen ? "rotate-180" : ""}`} />
+                </div>
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent className="pt-0 space-y-3">
+                <div className="flex gap-2">
+                  <Input
+                    type="password"
+                    value={vtKey}
+                    onChange={(e) => saveVtKey(e.target.value.trim())}
+                    placeholder="API key de VirusTotal (64 caracteres)"
+                    className="font-mono text-xs"
+                    autoComplete="off"
+                  />
+                  {vtKey && (
+                    <Button variant="outline" onClick={() => saveVtKey("")}>
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Se guarda solo en tu navegador (localStorage). Cada análisis se enviará a VirusTotal usando esta key.
+                  Consíguela gratis en{" "}
+                  <a href="https://www.virustotal.com/gui/my-apikey" target="_blank" rel="noreferrer" className="text-accent hover:underline">
+                    virustotal.com/gui/my-apikey
+                  </a>.
+                </p>
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
+
         {result && !result.ok && (
           <Card className="border-destructive/40 bg-destructive/5">
             <CardContent className="py-4 flex items-center gap-3">
@@ -256,6 +308,10 @@ function Home() {
             previewSrc={previewSrc}
             showPreview={showPreview}
             setShowPreview={setShowPreview}
+            vtEnabled={!!vtKey}
+            vtResult={vtResult}
+            vtLoading={vtLoading}
+            onVtRescan={() => result.finalUrl && runVt(result.finalUrl, true)}
           />
         )}
 
