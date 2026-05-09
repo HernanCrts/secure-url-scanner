@@ -31,6 +31,7 @@ export const Route = createFileRoute("/")({
 });
 
 const HISTORY_KEY = "urlab.history.v1";
+const VT_KEY_STORAGE = "urlab.vt.apikey.v1";
 
 type HistoryItem = {
   url: string;
