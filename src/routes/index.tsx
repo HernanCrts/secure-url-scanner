@@ -121,6 +121,7 @@ function Home() {
       if (!/^https?:\/\//i.test(normalized)) normalized = "http://" + normalized;
       const r = await analyze({ data: { url: normalized, userAgent: effectiveUA, followRedirects } });
       setResult(r);
+      setVtResult(null);
       if (r.ok) {
         pushHistory({
           url: normalized,
@@ -130,6 +131,10 @@ function Home() {
           finalUrl: r.finalUrl,
           hops: r.hops.length,
         });
+        if (vtKey && r.finalUrl) {
+          // disparar consulta a VT en background
+          runVt(r.finalUrl);
+        }
       }
     } catch (err) {
       setResult({ ok: false, error: (err as Error).message, hops: [] });
