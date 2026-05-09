@@ -535,6 +535,12 @@ function ResultsView({
             </CardContent>
           </Card>
         </TabsContent>
+
+        {vtEnabled && (
+          <TabsContent value="vt" className="mt-4">
+            <VirusTotalPanel result={vtResult} loading={vtLoading} onRescan={onVtRescan} />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
