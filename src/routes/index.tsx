@@ -209,22 +209,22 @@ function Home() {
                       placeholder="Mi-UA/1.0 (...)"
                       className="font-mono text-xs"
                     />
-                  ) : !hydrated ? (
-                    <Input
-                      value={UA_PRESETS[0].label}
-                      readOnly
-                      className="font-mono text-xs"
-                      aria-label="User Agent seleccionado"
-                    />
                   ) : (
-                    <Select value={uaPreset} onValueChange={setUaPreset}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {UA_PRESETS.map((p) => (
-                          <SelectItem key={p.label} value={p.value}>{p.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                      {UA_PRESETS.map((p) => (
+                        <Button
+                          key={p.label}
+                          type="button"
+                          variant={uaPreset === p.value ? "default" : "outline"}
+                          size="sm"
+                          className="justify-start truncate text-xs"
+                          onClick={() => setUaPreset(p.value)}
+                          title={p.label}
+                        >
+                          {p.label}
+                        </Button>
+                      ))}
+                    </div>
                   )}
                   <p className="text-[10px] text-muted-foreground font-mono truncate">{effectiveUA || "(sin User-Agent)"}</p>
                 </div>
