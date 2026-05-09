@@ -10,7 +10,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { analyzeUrl, type AnalyzeResult } from "@/lib/analyze.functions";
 import { checkVirusTotal, type VTResult } from "@/lib/virustotal.functions";
@@ -62,7 +61,6 @@ function Home() {
   const [result, setResult] = useState<AnalyzeResult | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [showPreview, setShowPreview] = useState(false);
-  const [hydrated, setHydrated] = useState(false);
 
   // VirusTotal
   const [vtKey, setVtKey] = useState("");
@@ -73,7 +71,6 @@ function Home() {
   const effectiveUA = useCustom ? uaCustom : uaPreset;
 
   useEffect(() => {
-    setHydrated(true);
     try {
       const raw = localStorage.getItem(HISTORY_KEY);
       if (raw) setHistory(JSON.parse(raw));
@@ -212,22 +209,22 @@ function Home() {
                       placeholder="Mi-UA/1.0 (...)"
                       className="font-mono text-xs"
                     />
-                  ) : !hydrated ? (
-                    <Input
-                      value={UA_PRESETS[0].label}
-                      readOnly
-                      className="font-mono text-xs"
-                      aria-label="User Agent seleccionado"
-                    />
                   ) : (
-                    <Select value={uaPreset} onValueChange={setUaPreset}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {UA_PRESETS.map((p) => (
-                          <SelectItem key={p.label} value={p.value}>{p.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                      {UA_PRESETS.map((p) => (
+                        <Button
+                          key={p.label}
+                          type="button"
+                          variant={uaPreset === p.value ? "default" : "outline"}
+                          size="sm"
+                          className="justify-start truncate text-xs"
+                          onClick={() => setUaPreset(p.value)}
+                          title={p.label}
+                        >
+                          {p.label}
+                        </Button>
+                      ))}
+                    </div>
                   )}
                   <p className="text-[10px] text-muted-foreground font-mono truncate">{effectiveUA || "(sin User-Agent)"}</p>
                 </div>
