@@ -52,6 +52,7 @@ function statusVariant(status?: number): { color: string; label: string } {
 
 function Home() {
   const analyze = useServerFn(analyzeUrl);
+  const vtCheck = useServerFn(checkVirusTotal);
   const [url, setUrl] = useState("");
   const [uaPreset, setUaPreset] = useState(UA_PRESETS[0].value);
   const [uaCustom, setUaCustom] = useState("");
@@ -61,6 +62,12 @@ function Home() {
   const [result, setResult] = useState<AnalyzeResult | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [showPreview, setShowPreview] = useState(false);
+
+  // VirusTotal
+  const [vtKey, setVtKey] = useState("");
+  const [vtOpen, setVtOpen] = useState(false);
+  const [vtResult, setVtResult] = useState<VTResult | null>(null);
+  const [vtLoading, setVtLoading] = useState(false);
 
   const effectiveUA = useCustom ? uaCustom : uaPreset;
 
