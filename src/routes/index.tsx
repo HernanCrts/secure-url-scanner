@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useState } from "react";
-import { Shield, Globe, Loader2, AlertTriangle, ArrowRight, Eye, Code2, Link2, FileSearch, History as HistoryIcon, Trash2, ExternalLink } from "lucide-react";
+import { Shield, Globe, Loader2, AlertTriangle, ArrowRight, Eye, Code2, Link2, FileSearch, History as HistoryIcon, Trash2, ExternalLink, KeyRound, ShieldCheck, ShieldAlert, RefreshCw, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,7 +11,9 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { analyzeUrl, type AnalyzeResult } from "@/lib/analyze.functions";
+import { checkVirusTotal, type VTResult } from "@/lib/virustotal.functions";
 import { UA_PRESETS } from "@/lib/ua-presets";
 
 export const Route = createFileRoute("/")({
