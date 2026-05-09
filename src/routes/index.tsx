@@ -368,13 +368,23 @@ function ResultsView({
   previewSrc,
   showPreview,
   setShowPreview,
+  vtEnabled,
+  vtResult,
+  vtLoading,
+  onVtRescan,
 }: {
   result: AnalyzeResult;
   previewSrc: string;
   showPreview: boolean;
   setShowPreview: (b: boolean) => void;
+  vtEnabled: boolean;
+  vtResult: VTResult | null;
+  vtLoading: boolean;
+  onVtRescan: () => void;
 }) {
   const final = statusVariant(result.finalStatus);
+  const malicious = vtResult?.ok ? (vtResult.stats?.malicious ?? 0) : 0;
+  const suspicious = vtResult?.ok ? (vtResult.stats?.suspicious ?? 0) : 0;
   return (
     <div className="space-y-6">
       <Card className="border-border/60">
@@ -400,6 +410,12 @@ function ResultsView({
           <TabsTrigger value="resources">Recursos</TabsTrigger>
           <TabsTrigger value="html"><Code2 className="w-3.5 h-3.5 mr-1.5" />HTML</TabsTrigger>
           <TabsTrigger value="preview"><Eye className="w-3.5 h-3.5 mr-1.5" />Vista previa</TabsTrigger>
+          {vtEnabled && (
+            <TabsTrigger value="vt">
+              {malicious > 0 ? <ShieldAlert className="w-3.5 h-3.5 mr-1.5 text-destructive" /> : <ShieldCheck className="w-3.5 h-3.5 mr-1.5 text-primary" />}
+              VirusTotal{vtResult?.ok ? ` (${malicious + suspicious}/${vtResult.totalEngines})` : ""}
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="redirects" className="mt-4">
