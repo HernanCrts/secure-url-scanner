@@ -62,6 +62,7 @@ function Home() {
   const [result, setResult] = useState<AnalyzeResult | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [showPreview, setShowPreview] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
 
   // VirusTotal
   const [vtKey, setVtKey] = useState("");
@@ -72,6 +73,7 @@ function Home() {
   const effectiveUA = useCustom ? uaCustom : uaPreset;
 
   useEffect(() => {
+    setHydrated(true);
     try {
       const raw = localStorage.getItem(HISTORY_KEY);
       if (raw) setHistory(JSON.parse(raw));
@@ -209,6 +211,13 @@ function Home() {
                       onChange={(e) => setUaCustom(e.target.value)}
                       placeholder="Mi-UA/1.0 (...)"
                       className="font-mono text-xs"
+                    />
+                  ) : !hydrated ? (
+                    <Input
+                      value={UA_PRESETS[0].label}
+                      readOnly
+                      className="font-mono text-xs"
+                      aria-label="User Agent seleccionado"
                     />
                   ) : (
                     <Select value={uaPreset} onValueChange={setUaPreset}>
