@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useState } from "react";
-import { Shield, Globe, Loader2, AlertTriangle, ArrowRight, Eye, Code2, Link2, FileSearch, History as HistoryIcon, Trash2, ExternalLink } from "lucide-react";
+import { Shield, Globe, Loader2, AlertTriangle, ArrowRight, Eye, Code2, Link2, FileSearch, History as HistoryIcon, Trash2, ExternalLink, KeyRound, ShieldCheck, ShieldAlert, RefreshCw, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,7 +11,9 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { analyzeUrl, type AnalyzeResult } from "@/lib/analyze.functions";
+import { checkVirusTotal, type VTResult } from "@/lib/virustotal.functions";
 import { UA_PRESETS } from "@/lib/ua-presets";
 
 export const Route = createFileRoute("/")({
@@ -29,6 +31,7 @@ export const Route = createFileRoute("/")({
 });
 
 const HISTORY_KEY = "urlab.history.v1";
+const VT_KEY_STORAGE = "urlab.vt.apikey.v1";
 
 type HistoryItem = {
   url: string;
@@ -49,6 +52,7 @@ function statusVariant(status?: number): { color: string; label: string } {
 
 function Home() {
   const analyze = useServerFn(analyzeUrl);
+  const vtCheck = useServerFn(checkVirusTotal);
   const [url, setUrl] = useState("");
   const [uaPreset, setUaPreset] = useState(UA_PRESETS[0].value);
   const [uaCustom, setUaCustom] = useState("");
@@ -59,14 +63,44 @@ function Home() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [showPreview, setShowPreview] = useState(false);
 
+  // VirusTotal
+  const [vtKey, setVtKey] = useState("");
+  const [vtOpen, setVtOpen] = useState(false);
+  const [vtResult, setVtResult] = useState<VTResult | null>(null);
+  const [vtLoading, setVtLoading] = useState(false);
+
   const effectiveUA = useCustom ? uaCustom : uaPreset;
 
   useEffect(() => {
     try {
       const raw = localStorage.getItem(HISTORY_KEY);
       if (raw) setHistory(JSON.parse(raw));
+      const k = localStorage.getItem(VT_KEY_STORAGE);
+      if (k) setVtKey(k);
     } catch { /* ignore */ }
   }, []);
+
+  function saveVtKey(k: string) {
+    setVtKey(k);
+    try {
+      if (k) localStorage.setItem(VT_KEY_STORAGE, k);
+      else localStorage.removeItem(VT_KEY_STORAGE);
+    } catch { /* ignore */ }
+  }
+
+  async function runVt(targetUrl: string, force = false) {
+    if (!vtKey) return;
+    setVtLoading(true);
+    setVtResult(null);
+    try {
+      const r = await vtCheck({ data: { url: targetUrl, apiKey: vtKey, forceRescan: force } });
+      setVtResult(r);
+    } catch (err) {
+      setVtResult({ ok: false, error: (err as Error).message });
+    } finally {
+      setVtLoading(false);
+    }
+  }
 
   function pushHistory(item: HistoryItem) {
     setHistory((prev) => {
@@ -87,6 +121,7 @@ function Home() {
       if (!/^https?:\/\//i.test(normalized)) normalized = "http://" + normalized;
       const r = await analyze({ data: { url: normalized, userAgent: effectiveUA, followRedirects } });
       setResult(r);
+      setVtResult(null);
       if (r.ok) {
         pushHistory({
           url: normalized,
@@ -96,6 +131,10 @@ function Home() {
           finalUrl: r.finalUrl,
           hops: r.hops.length,
         });
+        if (vtKey && r.finalUrl) {
+          // disparar consulta a VT en background
+          runVt(r.finalUrl);
+        }
       }
     } catch (err) {
       setResult({ ok: false, error: (err as Error).message, hops: [] });
@@ -199,6 +238,58 @@ function Home() {
           </CardContent>
         </Card>
 
+        <Collapsible open={vtOpen} onOpenChange={setVtOpen}>
+          <Card className={`border-border/60 ${vtKey ? "bg-card/60" : "bg-card/40"}`}>
+            <CollapsibleTrigger asChild>
+              <button className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-card/30 transition-colors rounded-t-xl">
+                <div className="flex items-center gap-3">
+                  <KeyRound className="w-4 h-4 text-primary" />
+                  <div>
+                    <div className="text-sm font-medium">Integración con VirusTotal</div>
+                    <div className="text-xs text-muted-foreground">
+                      {vtKey ? "API key configurada — se consultará automáticamente" : "Opcional · pega tu API key para revisar reputación"}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {vtKey && (
+                    <Badge variant="outline" className="border-primary/40 text-primary">
+                      <ShieldCheck className="w-3 h-3 mr-1" />Activo
+                    </Badge>
+                  )}
+                  <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${vtOpen ? "rotate-180" : ""}`} />
+                </div>
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent className="pt-0 space-y-3">
+                <div className="flex gap-2">
+                  <Input
+                    type="password"
+                    value={vtKey}
+                    onChange={(e) => saveVtKey(e.target.value.trim())}
+                    placeholder="API key de VirusTotal (64 caracteres)"
+                    className="font-mono text-xs"
+                    autoComplete="off"
+                  />
+                  {vtKey && (
+                    <Button variant="outline" onClick={() => saveVtKey("")}>
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Se guarda solo en tu navegador (localStorage). Cada análisis se enviará a VirusTotal usando esta key.
+                  Consíguela gratis en{" "}
+                  <a href="https://www.virustotal.com/gui/my-apikey" target="_blank" rel="noreferrer" className="text-accent hover:underline">
+                    virustotal.com/gui/my-apikey
+                  </a>.
+                </p>
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
+
         {result && !result.ok && (
           <Card className="border-destructive/40 bg-destructive/5">
             <CardContent className="py-4 flex items-center gap-3">
@@ -217,6 +308,10 @@ function Home() {
             previewSrc={previewSrc}
             showPreview={showPreview}
             setShowPreview={setShowPreview}
+            vtEnabled={!!vtKey}
+            vtResult={vtResult}
+            vtLoading={vtLoading}
+            onVtRescan={() => result.finalUrl && runVt(result.finalUrl, true)}
           />
         )}
 
@@ -273,13 +368,23 @@ function ResultsView({
   previewSrc,
   showPreview,
   setShowPreview,
+  vtEnabled,
+  vtResult,
+  vtLoading,
+  onVtRescan,
 }: {
   result: AnalyzeResult;
   previewSrc: string;
   showPreview: boolean;
   setShowPreview: (b: boolean) => void;
+  vtEnabled: boolean;
+  vtResult: VTResult | null;
+  vtLoading: boolean;
+  onVtRescan: () => void;
 }) {
   const final = statusVariant(result.finalStatus);
+  const malicious = vtResult?.ok ? (vtResult.stats?.malicious ?? 0) : 0;
+  const suspicious = vtResult?.ok ? (vtResult.stats?.suspicious ?? 0) : 0;
   return (
     <div className="space-y-6">
       <Card className="border-border/60">
@@ -305,6 +410,12 @@ function ResultsView({
           <TabsTrigger value="resources">Recursos</TabsTrigger>
           <TabsTrigger value="html"><Code2 className="w-3.5 h-3.5 mr-1.5" />HTML</TabsTrigger>
           <TabsTrigger value="preview"><Eye className="w-3.5 h-3.5 mr-1.5" />Vista previa</TabsTrigger>
+          {vtEnabled && (
+            <TabsTrigger value="vt">
+              {malicious > 0 ? <ShieldAlert className="w-3.5 h-3.5 mr-1.5 text-destructive" /> : <ShieldCheck className="w-3.5 h-3.5 mr-1.5 text-primary" />}
+              VirusTotal{vtResult?.ok ? ` (${malicious + suspicious}/${vtResult.totalEngines})` : ""}
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="redirects" className="mt-4">
@@ -424,6 +535,12 @@ function ResultsView({
             </CardContent>
           </Card>
         </TabsContent>
+
+        {vtEnabled && (
+          <TabsContent value="vt" className="mt-4">
+            <VirusTotalPanel result={vtResult} loading={vtLoading} onRescan={onVtRescan} />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
@@ -444,6 +561,135 @@ function ResourceList({ title, items }: { title: string; items: string[] }) {
           </ul>
         </ScrollArea>
       )}
+    </div>
+  );
+}
+
+function VirusTotalPanel({
+  result,
+  loading,
+  onRescan,
+}: {
+  result: VTResult | null;
+  loading: boolean;
+  onRescan: () => void;
+}) {
+  if (loading) {
+    return (
+      <Card><CardContent className="py-10 flex flex-col items-center gap-3 text-muted-foreground">
+        <Loader2 className="w-6 h-6 animate-spin text-primary" />
+        <p className="text-sm">Consultando VirusTotal…</p>
+      </CardContent></Card>
+    );
+  }
+  if (!result) {
+    return (
+      <Card><CardContent className="py-6 flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">Aún no se ha consultado esta URL.</p>
+        <Button variant="outline" size="sm" onClick={onRescan}>
+          <RefreshCw className="w-4 h-4 mr-1.5" />Consultar ahora
+        </Button>
+      </CardContent></Card>
+    );
+  }
+  if (!result.ok) {
+    return (
+      <Card className="border-destructive/40 bg-destructive/5"><CardContent className="py-4 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <AlertTriangle className="w-5 h-5 text-destructive" />
+          <div>
+            <div className="font-medium">VirusTotal devolvió un error</div>
+            <div className="text-sm text-muted-foreground">{result.error}</div>
+          </div>
+        </div>
+        <Button variant="outline" size="sm" onClick={onRescan}>
+          <RefreshCw className="w-4 h-4 mr-1.5" />Reintentar
+        </Button>
+      </CardContent></Card>
+    );
+  }
+
+  const s = result.stats ?? { harmless: 0, malicious: 0, suspicious: 0, undetected: 0, timeout: 0 };
+  const total = result.totalEngines ?? 0;
+  const verdict =
+    s.malicious > 0 ? { label: "Malicioso", color: "bg-destructive/20 text-destructive border-destructive/40", icon: ShieldAlert }
+    : s.suspicious > 0 ? { label: "Sospechoso", color: "bg-warning/20 text-warning-foreground border-warning/40", icon: ShieldAlert }
+    : { label: "Limpio", color: "bg-primary/20 text-primary border-primary/40", icon: ShieldCheck };
+  const Icon = verdict.icon;
+
+  return (
+    <Card>
+      <CardContent className="py-4 space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <Badge variant="outline" className={`${verdict.color} text-sm py-1.5 px-3`}>
+              <Icon className="w-4 h-4 mr-1.5" />{verdict.label}
+            </Badge>
+            <div className="text-sm text-muted-foreground">
+              {s.malicious + s.suspicious}/{total} motores marcaron esta URL
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {result.permalink && (
+              <a href={result.permalink} target="_blank" rel="noreferrer" className="text-xs text-accent hover:underline inline-flex items-center gap-1">
+                Ver en VirusTotal <ExternalLink className="w-3 h-3" />
+              </a>
+            )}
+            <Button variant="outline" size="sm" onClick={onRescan}>
+              <RefreshCw className="w-4 h-4 mr-1.5" />Reescanear
+            </Button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+          <Stat label="Maliciosos" value={s.malicious} tone={s.malicious > 0 ? "destructive" : "muted"} />
+          <Stat label="Sospechosos" value={s.suspicious} tone={s.suspicious > 0 ? "warning" : "muted"} />
+          <Stat label="Limpios" value={s.harmless} tone="primary" />
+          <Stat label="Sin detectar" value={s.undetected} tone="muted" />
+          <Stat label="Timeout" value={s.timeout} tone="muted" />
+        </div>
+
+        {result.scannedAt && (
+          <p className="text-xs text-muted-foreground">
+            Último análisis: {new Date(result.scannedAt * 1000).toLocaleString()}{result.fresh ? " (recién escaneado)" : ""}
+          </p>
+        )}
+
+        {result.flaggedBy && result.flaggedBy.length > 0 && (
+          <div>
+            <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2">
+              Motores que han marcado la URL ({result.flaggedBy.length})
+            </div>
+            <ScrollArea className="max-h-72 rounded-md border border-border/60 bg-input/30">
+              <ul className="p-2 space-y-1 text-xs font-mono">
+                {result.flaggedBy.map((f, i) => (
+                  <li key={i} className="grid grid-cols-[160px_100px_1fr] gap-2 px-2 py-1 rounded hover:bg-card/40">
+                    <span className="text-foreground/90 truncate">{f.engine}</span>
+                    <Badge variant="outline" className={f.category === "malicious" ? "border-destructive/40 text-destructive" : "border-warning/40 text-foreground/80"}>
+                      {f.category}
+                    </Badge>
+                    <span className="text-muted-foreground truncate">{f.result}</span>
+                  </li>
+                ))}
+              </ul>
+            </ScrollArea>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function Stat({ label, value, tone }: { label: string; value: number; tone: "destructive" | "warning" | "primary" | "muted" }) {
+  const toneClass =
+    tone === "destructive" ? "text-destructive border-destructive/40 bg-destructive/10"
+    : tone === "warning" ? "text-foreground border-warning/40 bg-warning/10"
+    : tone === "primary" ? "text-primary border-primary/40 bg-primary/10"
+    : "text-muted-foreground border-border bg-input/30";
+  return (
+    <div className={`rounded-md border px-3 py-2 ${toneClass}`}>
+      <div className="text-[10px] uppercase tracking-wide opacity-80">{label}</div>
+      <div className="text-xl font-semibold mt-0.5">{value}</div>
     </div>
   );
 }
