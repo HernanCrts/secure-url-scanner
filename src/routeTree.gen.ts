@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiProxyRouteImport } from './routes/api/proxy'
+import { Route as ApiHbStopRouteImport } from './routes/api/hb-stop'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -22,30 +23,39 @@ const ApiProxyRoute = ApiProxyRouteImport.update({
   path: '/api/proxy',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiHbStopRoute = ApiHbStopRouteImport.update({
+  id: '/api/hb-stop',
+  path: '/api/hb-stop',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/api/hb-stop': typeof ApiHbStopRoute
   '/api/proxy': typeof ApiProxyRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/api/hb-stop': typeof ApiHbStopRoute
   '/api/proxy': typeof ApiProxyRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/api/hb-stop': typeof ApiHbStopRoute
   '/api/proxy': typeof ApiProxyRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/proxy'
+  fullPaths: '/' | '/api/hb-stop' | '/api/proxy'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/proxy'
-  id: '__root__' | '/' | '/api/proxy'
+  to: '/' | '/api/hb-stop' | '/api/proxy'
+  id: '__root__' | '/' | '/api/hb-stop' | '/api/proxy'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ApiHbStopRoute: typeof ApiHbStopRoute
   ApiProxyRoute: typeof ApiProxyRoute
 }
 
@@ -65,23 +75,21 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiProxyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/hb-stop': {
+      id: '/api/hb-stop'
+      path: '/api/hb-stop'
+      fullPath: '/api/hb-stop'
+      preLoaderRoute: typeof ApiHbStopRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ApiHbStopRoute: ApiHbStopRoute,
   ApiProxyRoute: ApiProxyRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

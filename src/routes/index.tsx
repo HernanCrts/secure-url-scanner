@@ -13,6 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { analyzeUrl, type AnalyzeResult } from "@/lib/analyze.functions";
 import { checkVirusTotal, type VTResult } from "@/lib/virustotal.functions";
+import { createHbSession, stopHbSession, type HBSession } from "@/lib/hyperbrowser.functions";
 import { UA_PRESETS } from "@/lib/ua-presets";
 
 export const Route = createFileRoute("/")({
@@ -52,6 +53,8 @@ function statusVariant(status?: number): { color: string; label: string } {
 function Home() {
   const analyze = useServerFn(analyzeUrl);
   const vtCheck = useServerFn(checkVirusTotal);
+  const hbStart = useServerFn(createHbSession);
+  const hbStop = useServerFn(stopHbSession);
   const [url, setUrl] = useState("");
   const [uaPreset, setUaPreset] = useState(UA_PRESETS[0].value);
   const [uaCustom, setUaCustom] = useState("");
@@ -67,6 +70,11 @@ function Home() {
   const [vtOpen, setVtOpen] = useState(false);
   const [vtResult, setVtResult] = useState<VTResult | null>(null);
   const [vtLoading, setVtLoading] = useState(false);
+
+  // Hyperbrowser sandbox VM
+  const [hbSession, setHbSession] = useState<HBSession | null>(null);
+  const [hbLoading, setHbLoading] = useState(false);
+  const [hbError, setHbError] = useState<string | null>(null);
 
   const effectiveUA = useCustom ? uaCustom : uaPreset;
 
@@ -146,6 +154,49 @@ function Home() {
     if (!result?.ok || !result.finalUrl) return "";
     return `/api/proxy?ua=${encodeURIComponent(effectiveUA)}&url=${encodeURIComponent(result.finalUrl)}`;
   }, [result, effectiveUA]);
+
+  async function startVm() {
+    setHbError(null);
+    setHbLoading(true);
+    try {
+      const target = result?.finalUrl || url.trim();
+      const normalized = target && !/^https?:\/\//i.test(target) ? "http://" + target : target;
+      const r = await hbStart({ data: { url: normalized || undefined } });
+      if (!r.ok) {
+        setHbError(r.error || "No se pudo iniciar la sesión");
+        return;
+      }
+      setHbSession(r);
+    } catch (e) {
+      setHbError((e as Error).message);
+    } finally {
+      setHbLoading(false);
+    }
+  }
+
+  async function stopVm() {
+    if (!hbSession?.id) {
+      setHbSession(null);
+      return;
+    }
+    const id = hbSession.id;
+    setHbSession(null);
+    try { await hbStop({ data: { id } }); } catch { /* ignore */ }
+  }
+
+  // Stop VM on unmount / page unload so it gets destroyed even if user closes the tab
+  useEffect(() => {
+    if (!hbSession?.id) return;
+    const id = hbSession.id;
+    const handler = () => {
+      try {
+        const blob = new Blob([JSON.stringify({ id })], { type: "application/json" });
+        navigator.sendBeacon?.("/api/hb-stop", blob);
+      } catch { /* ignore */ }
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [hbSession?.id]);
 
   return (
     <div className="min-h-screen">
@@ -318,6 +369,11 @@ function Home() {
             vtResult={vtResult}
             vtLoading={vtLoading}
             onVtRescan={() => result.finalUrl && runVt(result.finalUrl, true)}
+            hbSession={hbSession}
+            hbLoading={hbLoading}
+            hbError={hbError}
+            startVm={startVm}
+            stopVm={stopVm}
           />
         )}
 
@@ -378,6 +434,11 @@ function ResultsView({
   vtResult,
   vtLoading,
   onVtRescan,
+  hbSession,
+  hbLoading,
+  hbError,
+  startVm,
+  stopVm,
 }: {
   result: AnalyzeResult;
   previewSrc: string;
@@ -387,6 +448,11 @@ function ResultsView({
   vtResult: VTResult | null;
   vtLoading: boolean;
   onVtRescan: () => void;
+  hbSession: HBSession | null;
+  hbLoading: boolean;
+  hbError: string | null;
+  startVm: () => void;
+  stopVm: () => void;
 }) {
   const final = statusVariant(result.finalStatus);
   const malicious = vtResult?.ok ? (vtResult.stats?.malicious ?? 0) : 0;
@@ -416,6 +482,7 @@ function ResultsView({
           <TabsTrigger value="resources">Recursos</TabsTrigger>
           <TabsTrigger value="html"><Code2 className="w-3.5 h-3.5 mr-1.5" />HTML</TabsTrigger>
           <TabsTrigger value="preview"><Eye className="w-3.5 h-3.5 mr-1.5" />Vista previa</TabsTrigger>
+          <TabsTrigger value="vm"><AlertTriangle className="w-3.5 h-3.5 mr-1.5 text-warning" />VM aislada</TabsTrigger>
           {vtEnabled && (
             <TabsTrigger value="vt">
               {malicious > 0 ? <ShieldAlert className="w-3.5 h-3.5 mr-1.5 text-destructive" /> : <ShieldCheck className="w-3.5 h-3.5 mr-1.5 text-primary" />}
@@ -536,6 +603,48 @@ function ResultsView({
                   sandbox="allow-forms allow-popups allow-scripts allow-same-origin"
                   className="w-full h-[700px] rounded-md border border-border bg-background"
                   title="Vista previa aislada"
+                />
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="vm" className="mt-4">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between gap-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-warning" />
+                  Navegador remoto en VM desechable
+                </CardTitle>
+                {hbSession?.id && (
+                  <Button size="sm" variant="destructive" onClick={stopVm}>
+                    Cerrar y destruir VM
+                  </Button>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-xs text-muted-foreground">
+                La página se abre en un Chrome alojado en un contenedor efímero de Hyperbrowser.
+                Solo recibes la imagen del navegador remoto — el código de la página nunca se
+                ejecuta en tu equipo. Al pulsar &quot;Cerrar&quot; el contenedor se destruye y, si
+                hubo infección, desaparece con él.
+              </p>
+              {!hbSession?.liveUrl ? (
+                <div className="rounded-md border border-warning/40 bg-warning/5 p-6 text-center space-y-3">
+                  <Button onClick={startVm} disabled={hbLoading}>
+                    {hbLoading ? "Provisionando VM…" : "Abrir en VM aislada"}
+                  </Button>
+                  {hbError && <p className="text-xs text-destructive">{hbError}</p>}
+                </div>
+              ) : (
+                <iframe
+                  src={hbSession.liveUrl}
+                  sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+                  allow="clipboard-read; clipboard-write"
+                  className="w-full h-[700px] rounded-md border border-border bg-background"
+                  title="Navegador remoto"
                 />
               )}
             </CardContent>
