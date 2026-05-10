@@ -155,6 +155,49 @@ function Home() {
     return `/api/proxy?ua=${encodeURIComponent(effectiveUA)}&url=${encodeURIComponent(result.finalUrl)}`;
   }, [result, effectiveUA]);
 
+  async function startVm() {
+    setHbError(null);
+    setHbLoading(true);
+    try {
+      const target = result?.finalUrl || url.trim();
+      const normalized = target && !/^https?:\/\//i.test(target) ? "http://" + target : target;
+      const r = await hbStart({ data: { url: normalized || undefined } });
+      if (!r.ok) {
+        setHbError(r.error || "No se pudo iniciar la sesión");
+        return;
+      }
+      setHbSession(r);
+    } catch (e) {
+      setHbError((e as Error).message);
+    } finally {
+      setHbLoading(false);
+    }
+  }
+
+  async function stopVm() {
+    if (!hbSession?.id) {
+      setHbSession(null);
+      return;
+    }
+    const id = hbSession.id;
+    setHbSession(null);
+    try { await hbStop({ data: { id } }); } catch { /* ignore */ }
+  }
+
+  // Stop VM on unmount / page unload so it gets destroyed even if user closes the tab
+  useEffect(() => {
+    if (!hbSession?.id) return;
+    const id = hbSession.id;
+    const handler = () => {
+      try {
+        const blob = new Blob([JSON.stringify({ id })], { type: "application/json" });
+        navigator.sendBeacon?.("/api/hb-stop", blob);
+      } catch { /* ignore */ }
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [hbSession?.id]);
+
   return (
     <div className="min-h-screen">
       <header className="border-b border-border/60 bg-card/40 backdrop-blur sticky top-0 z-40">
