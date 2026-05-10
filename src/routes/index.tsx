@@ -467,6 +467,7 @@ function ResultsView({
           <TabsTrigger value="resources">Recursos</TabsTrigger>
           <TabsTrigger value="html"><Code2 className="w-3.5 h-3.5 mr-1.5" />HTML</TabsTrigger>
           <TabsTrigger value="preview"><Eye className="w-3.5 h-3.5 mr-1.5" />Vista previa</TabsTrigger>
+          <TabsTrigger value="vm"><AlertTriangle className="w-3.5 h-3.5 mr-1.5 text-warning" />VM aislada</TabsTrigger>
           {vtEnabled && (
             <TabsTrigger value="vt">
               {malicious > 0 ? <ShieldAlert className="w-3.5 h-3.5 mr-1.5 text-destructive" /> : <ShieldCheck className="w-3.5 h-3.5 mr-1.5 text-primary" />}
