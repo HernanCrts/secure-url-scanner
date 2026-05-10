@@ -53,6 +53,8 @@ function statusVariant(status?: number): { color: string; label: string } {
 function Home() {
   const analyze = useServerFn(analyzeUrl);
   const vtCheck = useServerFn(checkVirusTotal);
+  const hbStart = useServerFn(createHbSession);
+  const hbStop = useServerFn(stopHbSession);
   const [url, setUrl] = useState("");
   const [uaPreset, setUaPreset] = useState(UA_PRESETS[0].value);
   const [uaCustom, setUaCustom] = useState("");
