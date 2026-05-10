@@ -71,6 +71,11 @@ function Home() {
   const [vtResult, setVtResult] = useState<VTResult | null>(null);
   const [vtLoading, setVtLoading] = useState(false);
 
+  // Hyperbrowser sandbox VM
+  const [hbSession, setHbSession] = useState<HBSession | null>(null);
+  const [hbLoading, setHbLoading] = useState(false);
+  const [hbError, setHbError] = useState<string | null>(null);
+
   const effectiveUA = useCustom ? uaCustom : uaPreset;
 
   useEffect(() => {
