@@ -594,6 +594,48 @@ function ResultsView({
           </Card>
         </TabsContent>
 
+        <TabsContent value="vm" className="mt-4">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between gap-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-warning" />
+                  Navegador remoto en VM desechable
+                </CardTitle>
+                {hbSession?.id && (
+                  <Button size="sm" variant="destructive" onClick={stopVm}>
+                    Cerrar y destruir VM
+                  </Button>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-xs text-muted-foreground">
+                La página se abre en un Chrome alojado en un contenedor efímero de Hyperbrowser.
+                Solo recibes la imagen del navegador remoto — el código de la página nunca se
+                ejecuta en tu equipo. Al pulsar &quot;Cerrar&quot; el contenedor se destruye y, si
+                hubo infección, desaparece con él.
+              </p>
+              {!hbSession?.liveUrl ? (
+                <div className="rounded-md border border-warning/40 bg-warning/5 p-6 text-center space-y-3">
+                  <Button onClick={startVm} disabled={hbLoading}>
+                    {hbLoading ? "Provisionando VM…" : "Abrir en VM aislada"}
+                  </Button>
+                  {hbError && <p className="text-xs text-destructive">{hbError}</p>}
+                </div>
+              ) : (
+                <iframe
+                  src={hbSession.liveUrl}
+                  sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+                  allow="clipboard-read; clipboard-write"
+                  className="w-full h-[700px] rounded-md border border-border bg-background"
+                  title="Navegador remoto"
+                />
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         {vtEnabled && (
           <TabsContent value="vt" className="mt-4">
             <VirusTotalPanel result={vtResult} loading={vtLoading} onRescan={onVtRescan} />
