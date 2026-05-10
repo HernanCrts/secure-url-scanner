@@ -429,6 +429,11 @@ function ResultsView({
   vtResult,
   vtLoading,
   onVtRescan,
+  hbSession,
+  hbLoading,
+  hbError,
+  startVm,
+  stopVm,
 }: {
   result: AnalyzeResult;
   previewSrc: string;
@@ -438,6 +443,11 @@ function ResultsView({
   vtResult: VTResult | null;
   vtLoading: boolean;
   onVtRescan: () => void;
+  hbSession: HBSession | null;
+  hbLoading: boolean;
+  hbError: string | null;
+  startVm: () => void;
+  stopVm: () => void;
 }) {
   const final = statusVariant(result.finalStatus);
   const malicious = vtResult?.ok ? (vtResult.stats?.malicious ?? 0) : 0;
