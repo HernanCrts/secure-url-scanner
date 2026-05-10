@@ -369,6 +369,11 @@ function Home() {
             vtResult={vtResult}
             vtLoading={vtLoading}
             onVtRescan={() => result.finalUrl && runVt(result.finalUrl, true)}
+            hbSession={hbSession}
+            hbLoading={hbLoading}
+            hbError={hbError}
+            startVm={startVm}
+            stopVm={stopVm}
           />
         )}
 
