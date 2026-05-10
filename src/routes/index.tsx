@@ -13,6 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { analyzeUrl, type AnalyzeResult } from "@/lib/analyze.functions";
 import { checkVirusTotal, type VTResult } from "@/lib/virustotal.functions";
+import { createHbSession, stopHbSession, type HBSession } from "@/lib/hyperbrowser.functions";
 import { UA_PRESETS } from "@/lib/ua-presets";
 
 export const Route = createFileRoute("/")({
