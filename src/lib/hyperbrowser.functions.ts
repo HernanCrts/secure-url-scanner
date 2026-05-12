@@ -1,6 +1,8 @@
+// Cliente para el sandbox QEMU/virt-builder auto-hospedado.
+// Mantengo los nombres `createHbSession` / `stopHbSession` / `HBSession`
+// para no tocar el resto del UI: ahora hablan con TU host (variables
+// SANDBOX_HOST_URL + SANDBOX_API_TOKEN), no con Hyperbrowser.
 import { createServerFn } from "@tanstack/react-start";
-
-const BASE = "https://app.hyperbrowser.ai/api";
 
 export type HBSession = {
   ok: boolean;
@@ -10,63 +12,38 @@ export type HBSession = {
   wsEndpoint?: string;
 };
 
-function key() {
-  const k = process.env.HYPERBROWSER_API_KEY;
-  if (!k) throw new Error("HYPERBROWSER_API_KEY no configurada");
-  return k;
+function host() {
+  const h = process.env.SANDBOX_HOST_URL;
+  if (!h) throw new Error("SANDBOX_HOST_URL no configurada");
+  return h.replace(/\/$/, "");
+}
+function token() {
+  const t = process.env.SANDBOX_API_TOKEN;
+  if (!t) throw new Error("SANDBOX_API_TOKEN no configurada");
+  return t;
 }
 
 export const createHbSession = createServerFn({ method: "POST" })
   .inputValidator((d: { url?: string }) => d)
   .handler(async ({ data }): Promise<HBSession> => {
     try {
-      const res = await fetch(`${BASE}/session`, {
+      const res = await fetch(`${host()}/session`, {
         method: "POST",
         headers: {
-          "x-api-key": key(),
+          authorization: `Bearer ${token()}`,
           "content-type": "application/json",
         },
-        body: JSON.stringify({
-          useStealth: true,
-          adblock: true,
-          solveCaptchas: false,
-        }),
+        body: JSON.stringify({ url: data.url ?? null }),
       });
       const json = (await res.json()) as {
         id?: string;
         liveUrl?: string;
-        wsEndpoint?: string;
-        message?: string;
+        error?: string;
       };
       if (!res.ok || !json.id) {
-        return { ok: false, error: json.message || `HTTP ${res.status}` };
+        return { ok: false, error: json.error || `HTTP ${res.status}` };
       }
-
-      // Best-effort initial navigation via Hyperbrowser computer-action / scrape
-      // endpoint. We can't open WS from Cloudflare Workers with `new WebSocket()`,
-      // so we don't try CDP here. The user can type the URL inside the live view
-      // if this best-effort call fails.
-      if (data.url) {
-        try {
-          await fetch(`${BASE}/session/${json.id}/computer-action`, {
-            method: "POST",
-            headers: {
-              "x-api-key": key(),
-              "content-type": "application/json",
-            },
-            body: JSON.stringify({ action: "goto", url: data.url }),
-          });
-        } catch {
-          /* ignore — user can navigate manually */
-        }
-      }
-
-      return {
-        ok: true,
-        id: json.id,
-        liveUrl: json.liveUrl,
-        wsEndpoint: json.wsEndpoint,
-      };
+      return { ok: true, id: json.id, liveUrl: json.liveUrl };
     } catch (e) {
       return { ok: false, error: (e as Error).message };
     }
@@ -76,9 +53,9 @@ export const stopHbSession = createServerFn({ method: "POST" })
   .inputValidator((d: { id: string }) => d)
   .handler(async ({ data }) => {
     try {
-      const res = await fetch(`${BASE}/session/${data.id}/stop`, {
-        method: "PUT",
-        headers: { "x-api-key": key() },
+      const res = await fetch(`${host()}/session/${data.id}`, {
+        method: "DELETE",
+        headers: { authorization: `Bearer ${token()}` },
       });
       return { ok: res.ok };
     } catch (e) {
