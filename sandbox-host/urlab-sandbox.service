@@ -1,0 +1,16 @@
+[Unit]
+Description=URLab Sandbox API (QEMU + noVNC)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/USER/urlab-sandbox
+Environment=SANDBOX_API_TOKEN=PON_AQUI_TU_TOKEN
+Environment=PORT=8787
+Environment=PUBLIC_HOST=sandbox.tu-dominio.com
+ExecStart=/usr/bin/node api.js
+Restart=on-failure
+User=USER
+
+[Install]
+WantedBy=multi-user.target
