@@ -639,13 +639,29 @@ function ResultsView({
                   {hbError && <p className="text-xs text-destructive">{hbError}</p>}
                 </div>
               ) : (
-                <iframe
-                  src={hbSession.liveUrl}
-                  sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-                  allow="clipboard-read; clipboard-write"
-                  className="w-full h-[700px] rounded-md border border-border bg-background"
-                  title="Navegador remoto"
-                />
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-2 text-xs">
+                    <span className="text-muted-foreground truncate">
+                      Sesión: <code className="font-mono">{hbSession.id}</code>
+                    </span>
+                    <a
+                      href={hbSession.liveUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline text-primary hover:text-primary/80"
+                    >
+                      Abrir en nueva pestaña
+                    </a>
+                  </div>
+                  <iframe
+                    key={hbSession.id}
+                    src={hbSession.liveUrl}
+                    sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+                    allow="clipboard-read; clipboard-write"
+                    className="w-full h-[700px] rounded-md border border-border bg-background"
+                    title="Navegador remoto"
+                  />
+                </div>
               )}
             </CardContent>
           </Card>
