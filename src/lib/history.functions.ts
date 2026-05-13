@@ -23,14 +23,16 @@ export const recordSearch = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+type Json = string | number | boolean | null | { [k: string]: Json } | Json[];
+
 export type HistoryRow = {
   id: string;
   user_id: string;
   kind: "url" | "ip" | "email_headers";
   input: string;
-  result: unknown;
+  result: Json;
   created_at: string;
-  email?: string | null;
+  email: string | null;
 };
 
 const listSchema = z.object({
